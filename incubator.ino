@@ -1,17 +1,30 @@
-//librarys
+// Experimental Incubator
+//
+// Project page: https://foodhackingbase.org/wiki/Projects:Experimental_Incubator
+// Programmers: larsm (post@larsm.org), 
+//
+// Code was used from: http://www.dfrobot.com/wiki/index.php?title=Arduino_LCD_KeyPad_Shield_%28SKU:_DFR0009%29
+//
+// required libraries:
+// OneWire: http://www.pjrc.com/teensy/td_libs_OneWire.html
+// DallasTemperature: https://github.com/milesburton/Arduino-Temperature-Control-Library
+//
+// Hardware: arduino uno + prototyping shield + DS18B20 temperature sensor + arduino keypad shield (6 buttons and 16x2 lcd)
+
+
+// libraries
 #include <LiquidCrystal.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
 // DS18B20 temperature sensor
-#define ONE_WIRE_BUS 2 /* Digitalport Pin 2 definieren */
-OneWire ourWire(ONE_WIRE_BUS); /* Ini oneWire instance */
-DallasTemperature sensors(&ourWire);/* Dallas Temperature Library fur Nutzung der oneWire Library vorbereiten */
+#define ONE_WIRE_PIN 2 // the pin where the temperature sensor is connected
+OneWire ourWire(ONE_WIRE_PIN); // init oneWire instance
+DallasTemperature sensors(&ourWire); // init Dallas Temperature Library
 
-// select the pins used on the LCD panel
-LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
-
-// define some values used by the panel and buttons
+// LCD panel
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7); // the pin where the display is connected
+// define some values used by the LCD panel and buttons
 int lcd_key     = 0;
 int adc_key_in  = 0;
 #define btnRIGHT  0
@@ -24,10 +37,8 @@ int adc_key_in  = 0;
 // read the buttons
 int read_LCD_buttons()
 {
-	adc_key_in = analogRead(0);      // read the value from the sensor
-	// my buttons when read are centered at these valies: 0, 144, 329, 504, 741
-	// we add approx 50 to those values and check to see if we are close
-	if (adc_key_in > 1000) return btnNONE; // We make this the 1st option for speed reasons since it will be the most likely result
+	adc_key_in = analogRead(0);             // read the value from the sensor
+	if (adc_key_in > 1000) return btnNONE;  // We make this the 1st option for speed reasons since it will be the most likely result
 	// For V1.1 us this threshold
 	// if (adc_key_in < 50)   return btnRIGHT;
 	// if (adc_key_in < 250)  return btnUP;
@@ -45,7 +56,7 @@ int read_LCD_buttons()
 	return btnNONE;  // when all others fail, return this...
 }
 
-void setup()
+void setup() // is executed once at the start
 {
 	sensors.begin();                        // Init Dallas Temperature library
 
@@ -54,13 +65,13 @@ void setup()
 	lcd.print("button    temp");            // print a simple message
 }
 
-void loop()
+void loop() // is executed in a loop
 {
-	lcd.setCursor(10,1);                    // move cursor to second line "1" and 10 spaces over
+	lcd.setCursor(10,1);                    // move cursor to second line 1 and 10 spaces over
 	sensors.requestTemperatures();          // request temperature
 	lcd.print(sensors.getTempCByIndex(0) ); // display temperature
 
-	//lcd.setCursor(9,1);                   // move cursor to second line "1" and 9 spaces over
+	//lcd.setCursor(9,1);                   // move cursor to second line 1 and 9 spaces over
 	//lcd.print(millis()/1000);             // display seconds elapsed since power-up
 
 	lcd.setCursor(0,1);                     // move to the begining of the second line
