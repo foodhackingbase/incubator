@@ -1,6 +1,7 @@
 // Experimental Incubator
 //
 // Project page: https://foodhackingbase.org/wiki/Projects:Experimental_Incubator
+// Project wiki: http://wiki.techinc.nl/index.php/Fermentation_controller
 // Programmers: larsm (post@larsm.org), 
 //
 // Code was used from: http://www.dfrobot.com/wiki/index.php?title=Arduino_LCD_KeyPad_Shield_%28SKU:_DFR0009%29
@@ -9,22 +10,24 @@
 // OneWire: http://www.pjrc.com/teensy/td_libs_OneWire.html
 // DallasTemperature: https://github.com/milesburton/Arduino-Temperature-Control-Library
 //
-// Hardware: arduino uno + prototyping shield + DS18B20 temperature sensor + arduino keypad shield (6 buttons and 16x2 lcd)
+// Hardware: arduino uno + prototyping shield + DS18B20 temperature sensor + arduino keypad shield (6 keys and 16x2 lcd) + Tiny RTC I2C DS1307 AT24C32 Real Time Clock Module (not jet implemented)
+// Connecting everything: http://wiki.techinc.nl/index.php/Fermentation_controller#An_overview_of_pins_used
 
 
-// libraries
+// libraries: http://arduino.cc/en/Guide/Libraries
 #include <LiquidCrystal.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
 // DS18B20 temperature sensor
-#define ONE_WIRE_PIN 2 // the pin where the temperature sensor is connected
+#define ONE_WIRE_PIN 11 // the pin where the temperature sensor is connected, do not forget the 4,7kOhm pullup resistor
 OneWire ourWire(ONE_WIRE_PIN); // init oneWire instance
 DallasTemperature sensors(&ourWire); // init Dallas Temperature Library
 
-// LCD panel
+// LCD panel on the "keypad shield"
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7); // the pin where the display is connected
-// define some values used by the LCD panel and buttons
+
+// Keys on the "keypad shield"
 int lcd_key     = 0;
 int adc_key_in  = 0;
 #define btnRIGHT  0
@@ -34,7 +37,7 @@ int adc_key_in  = 0;
 #define btnSELECT 4
 #define btnNONE   5
 
-// read the buttons
+// read the keys on the "keypad shield"
 int read_LCD_buttons()
 {
 	adc_key_in = analogRead(0);             // read the value from the sensor
@@ -56,7 +59,7 @@ int read_LCD_buttons()
 	return btnNONE;  // when all others fail, return this...
 }
 
-void setup() // is executed once at the start
+void setup() // is executed once at the beginning
 {
 	sensors.begin();                        // Init Dallas Temperature library
 
