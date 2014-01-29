@@ -1,35 +1,40 @@
 // Experimental Incubator
 //
 // Project page: https://foodhackingbase.org/wiki/Projects:Experimental_Incubator
-// Project wiki: http://wiki.techinc.nl/index.php/Fermentation_controller
-// Programmers: larsm (post@larsm.org), 
+// Code: https://github.com/foodhackingbase/incubator
+// Programmers: larsm (post@larsm.org), Marcel, 
 //
-// Code was used from: http://www.dfrobot.com/wiki/index.php?title=Arduino_LCD_KeyPad_Shield_%28SKU:_DFR0009%29
+// Code was used from: http://www.dfrobot.com/wiki/index.php?title=Arduino_LCD_KeyPad_Shield_%28SKU:_DFR0009%29, http://www.pjrc.com/teensy/td_libs_DS1307RTC.html
 //
 // required libraries:
 // OneWire: http://www.pjrc.com/teensy/td_libs_OneWire.html
 // DallasTemperature: https://github.com/milesburton/Arduino-Temperature-Control-Library
+// Tiny RTC: http://www.pjrc.com/teensy/td_libs_DS1307RTC.html
+// Time: http://www.pjrc.com/teensy/td_libs_Time.html
 //
-// Hardware: arduino uno + prototyping shield + DS18B20 temperature sensor + arduino keypad shield (6 keys and 16x2 lcd) + Tiny RTC I2C DS1307 AT24C32 Real Time Clock Module (not jet implemented)
-// Connecting everything: http://wiki.techinc.nl/index.php/Fermentation_controller#An_overview_of_pins_used
+// Hardware: arduino uno + prototyping shield + DS18B20 temperature sensor + arduino keypad shield (6 keys and 16x2 lcd)
 
 
-// libraries: http://arduino.cc/en/Guide/Libraries
+// libraries
 #include <LiquidCrystal.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+#include <DS1307RTC.h>
+#include <Time.h>
+#include <Wire.h>
+
+
 // DS18B20 temperature sensor
-#define ONE_WIRE_PIN 11 // the pin where the temperature sensor is connected, do not forget the 4,7kOhm pullup resistor
-OneWire ourWire(ONE_WIRE_PIN); // init oneWire instance
-DallasTemperature sensors(&ourWire); // init Dallas Temperature Library
+#define ONE_WIRE_PIN 11 					// the pin where the temperature sensor is connected
+OneWire ourWire(ONE_WIRE_PIN); 				// init oneWire instance
+DallasTemperature sensors(&ourWire); 		// init Dallas Temperature Library
 
-// LCD panel on the "keypad shield"
-LiquidCrystal lcd(8, 9, 4, 5, 6, 7); // the pin where the display is connected
-
-// Keys on the "keypad shield"
-int lcd_key     = 0;
-int adc_key_in  = 0;
+// LCD panel
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7); 		// the pin where the display is connected
+// define some values used by the LCD panel and keys
+int lcd_key     = 0;						// temp variable
+int adc_key_in  = 0;						// the pin where the keys are connected
 #define btnRIGHT  0
 #define btnUP     1
 #define btnDOWN   2
@@ -37,8 +42,8 @@ int adc_key_in  = 0;
 #define btnSELECT 4
 #define btnNONE   5
 
-// read the keys on the "keypad shield"
-int read_LCD_buttons()
+// read the keys
+int read_LCD_keys()
 {
 	adc_key_in = analogRead(0);             // read the value from the sensor
 	if (adc_key_in > 1000) return btnNONE;  // We make this the 1st option for speed reasons since it will be the most likely result
@@ -56,31 +61,59 @@ int read_LCD_buttons()
 	if (adc_key_in < 555)  return btnLEFT;
 	if (adc_key_in < 790)  return btnSELECT;
 
-	return btnNONE;  // when all others fail, return this...
+	return btnNONE;  						// when all others fail, return this...
 }
 
-void setup() // is executed once at the beginning
+void setup() // is executed once at the start
 {
-	sensors.begin();                        // Init Dallas Temperature library
+	sensors.begin();                        // init temperature sensor
 
-	lcd.begin(16, 2);                       // start the library
-	lcd.setCursor(0,0);
-	lcd.print("button    temp");            // print a simple message
+	lcd.begin(16, 2);                       // init lcd display
+
+	tmElements_t tm;						// init Tiny RTC
+	if (RTC.chipPresent() && !RTC.read(tm)) {
+		RTC.set(1294911050); 				// chip found, set time?
+	}
 }
 
-void loop() // is executed in a loop
+void print2digits(int number) {				// helper function to display 2 digits with trailing 0. larsm: why not use printf("%02d",number);?
+	if (number >= 0 && number < 10) {
+		lcd.print('0');
+	}
+	lcd.print(number);
+}
+
+void loop() 								// is executed in a loop
 {
-	lcd.setCursor(10,1);                    // move cursor to second line 1 and 10 spaces over
+	tmElements_t tm;						// create Tiny RTC object
+	char t[7];								// make char array. larsm: why?
+	int i;									// make variable. larsm: why?
+	
+	lcd.setCursor(11,1);                    // setCursor(x position(0-15), line(0-1))
 	sensors.requestTemperatures();          // request temperature
 	lcd.print(sensors.getTempCByIndex(0) ); // display temperature
+	
+	lcd.setCursor(8,0);                     // setCursor(x position(0-15), line(0-1))
+	
+	if (RTC.read(tm)) {						// read and display Tiny RCT time
+		print2digits(tm.Hour);
+		lcd.print(':');
+		print2digits(tm.Minute);
+		lcd.print(':');
+		print2digits(tm.Second);
+	} else {								// Tiny RCT not sending time
+		if (RTC.chipPresent()) {			// Tiny RCT found
+			lcd.print("stopped");
+		} else {							// Tiny RCT not found
+			lcd.print("error  ");
+		}
+		delay(3000);						// display error message for 3 seconds
+	}
+	
+	lcd.setCursor(0,1);                     // setCursor(x position(0-15), line(0-1))
+	lcd_key = read_LCD_keys();           	// read the keys
 
-	//lcd.setCursor(9,1);                   // move cursor to second line 1 and 9 spaces over
-	//lcd.print(millis()/1000);             // display seconds elapsed since power-up
-
-	lcd.setCursor(0,1);                     // move to the begining of the second line
-	lcd_key = read_LCD_buttons();           // read the buttons
-
-	switch (lcd_key)                        // depending on which button was pushed, we perform an action
+	switch (lcd_key)                        // depending on which key was pushed, we perform an action
 	{
 	case btnRIGHT:
 		{
@@ -89,7 +122,7 @@ void loop() // is executed in a loop
 		}
 	case btnLEFT:
 		{
-			lcd.print("LEFT   ");
+			lcd.print("LEFT  ");
 			break;
 		}
 	case btnUP:
@@ -109,7 +142,7 @@ void loop() // is executed in a loop
 		}
 	case btnNONE:
 		{
-			lcd.print("NONE  ");
+			lcd.print("      ");
 			break;
 		}
 	}
