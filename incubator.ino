@@ -1,6 +1,7 @@
 // Experimental Incubator
 //
-// Project page: https://foodhackingbase.org/wiki/Projects:Experimental_Incubator
+// Wiki: http://wiki.techinc.nl/index.php/Fermentation_controller
+// Food Hacking Base project page: http://foodhackingbase.org/wiki/Experimental_Incubator
 // Code: https://github.com/foodhackingbase/incubator
 // Programmers: larsm (post@larsm.org), Marcel, 
 //
@@ -13,7 +14,7 @@
 // Time: http://www.pjrc.com/teensy/td_libs_Time.html
 //
 // Hardware: arduino uno + prototyping shield + DS18B20 temperature sensor + arduino keypad shield (6 keys and 16x2 lcd)
-
+// Connecting everything: http://wiki.techinc.nl/index.php/Fermentation_controller#An_overview_of_pins_used
 
 // libraries
 #include <LiquidCrystal.h>
