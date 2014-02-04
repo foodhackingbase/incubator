@@ -39,11 +39,11 @@
 
 // DS18B20 temperature sensor
 #define ONE_WIRE_PIN 11					// the pin where the temperature sensor is connected
-OneWire ourWire(ONE_WIRE_PIN);			// init oneWire instance
+OneWire ourWire( ONE_WIRE_PIN );		// init oneWire instance
 DallasTemperature sensors(&ourWire);	// init Dallas Temperature Library
 
-#define OUT1	2						// switch on the element
-#define OUT2	3						// change element function
+#define OUT1	2						// switch on the heat function
+#define OUT2	3						// switch on the cool function
 
 #define MODE_OFF	0
 #define MODE_HEAT	1
@@ -110,7 +110,7 @@ LiquidCrystal lcd( 8, 9, 4, 5, 6, 7 );	// the pins where the display is connecte
 #define btnNONE   5
 
 // read the keys
-int read_LCD_keys()
+int8_t read_LCD_keys()
 {
 	int adc_key_in;
 
@@ -162,14 +162,14 @@ void setup() // is executed once at the start
 	splash();
 
 	read_config();
-	
+
 	sensors.begin();						// init Dallas Temperature library
 
 	if( RTC.chipPresent() && !RTC.read( tm ) )
 		RTC.set( 0 );						// we have a chip but it needs kicking in the butt
 
-	pinMode( 2, OUTPUT );					// heat
-	pinMode( 3, OUTPUT );					// cool
+	pinMode( OUT1, OUTPUT );				// heat
+	pinMode( OUT2, OUTPUT );				// cool
 
 	set_mode();
 	print_mode( cfg.iMode );
@@ -200,7 +200,7 @@ time_t tSample= 0;
 time_t tLast= 0;
 time_t tNow= 0;
 
-int iLastKey= btnNONE;
+int8_t iLastKey= btnNONE;
 
 void turn_onoff( uint8_t p1, uint8_t p2 )
 {
@@ -242,7 +242,7 @@ void set_mode()
 	}
 }
 
-void print_mode( int i )
+void print_mode( int8_t i )
 {
 	lcd.setCursor( 2, 1 );
 	switch( i )
@@ -279,7 +279,7 @@ tmElements_t oldTm= {99,99,99,99,99,99,99};
 void loop() // is executed in a loop
 {
 	tmElements_t tm;
-	int iNewKey;
+	int8_t iNewKey;
 	int iTemp;
 	float fTemp;
 
