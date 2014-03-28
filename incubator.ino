@@ -152,29 +152,6 @@ void splash()
 	lcd.clear();
 }
 
-void setup() // is executed once at the start
-{
-	tmElements_t tm;
-
-	lcd.begin( 16, 2 );						// start the LCD library
-	lcd.setBacklightPin ( 10, POSITIVE );
-	lcd.setBacklight( 128 );				// set the contrast to 50%
-	splash();
-
-	read_config();
-
-	sensors.begin();						// init Dallas Temperature library
-
-	if( RTC.chipPresent() && !RTC.read( tm ) )
-		RTC.set( 0 );						// we have a chip but it needs kicking in the butt
-
-	pinMode( OUT1, OUTPUT );				// heat
-	pinMode( OUT2, OUTPUT );				// cool
-
-	set_mode();
-	print_mode( cfg.iMode );
-}
-
 void print2digits( short number, char fill ) {
 	if( number>=0 && number<10 )
 		lcd.print( fill );
@@ -202,10 +179,21 @@ time_t tNow= 0;
 
 int8_t iLastKey= btnNONE;
 
+boolean active_low= TRUE;
+
 void turn_onoff( uint8_t p1, uint8_t p2 )
 {
-	digitalWrite( OUT1, p1 );
-	digitalWrite( OUT2, p2 );
+	if( active_low )
+	{
+		digitalWrite( OUT1, p1==HIGH?LOW:HIGH );
+		digitalWrite( OUT2, p2==HIGH?LOW:HIGH );
+	}
+	else
+	{
+		digitalWrite( OUT1, p1 );
+		digitalWrite( OUT2, p2 );
+	}
+
 	lcd.setCursor( 0, 1 );
 	lcd.print( p1==HIGH?'*':' ' );
 	lcd.print( p2==HIGH?'*':' ' );
@@ -271,6 +259,31 @@ void print_mode( int8_t i )
 	default:
 		;
 	}
+}
+
+void setup() // is executed once at the start
+{
+	tmElements_t tm;
+
+	lcd.begin( 16, 2 );						// start the LCD library
+	lcd.setBacklightPin ( 10, POSITIVE );
+	lcd.setBacklight( 128 );				// set the contrast to 50%
+	splash();
+
+	read_config();
+
+	sensors.begin();						// init Dallas Temperature library
+
+	if( RTC.chipPresent() && !RTC.read( tm ) )
+		RTC.set( 0 );						// we have a chip but it needs kicking in the butt
+
+	TURN_OFF;
+
+	pinMode( OUT1, OUTPUT );				// heat
+	pinMode( OUT2, OUTPUT );				// cool
+	
+	set_mode();
+	print_mode( cfg.iMode );
 }
 
 int iLastTemp= 0;
@@ -359,7 +372,7 @@ void loop() // is executed in a loop
 
 	if( tNow-tSample>=TIME_INTERVAL ) {
 		if( cfg.iMode==MODE_TEMP_H ) {
-			if( iTemp<cfg.iTargetTemp-TEMP_INTERVAL )
+			if( iTemp<=cfg.iTargetTemp-TEMP_INTERVAL )
 				TURN_HEAT;
 			else if( iTemp>=cfg.iTargetTemp+TEMP_INTERVAL )
 				TURN_OFF;
@@ -368,13 +381,13 @@ void loop() // is executed in a loop
 		} else if( cfg.iMode==MODE_TEMP_C ) {
 			if( iTemp>=cfg.iTargetTemp+TEMP_INTERVAL )
 				TURN_COOL;
-			else if( iTemp<cfg.iTargetTemp-TEMP_INTERVAL )
+			else if( iTemp<=cfg.iTargetTemp-TEMP_INTERVAL )
 				TURN_OFF;
 			else
 				;
 		} else if( cfg.iMode==MODE_TEMP_T ) {
 			if( iDir!=DOWN ) {
-				if( iTemp<cfg.iTargetTemp-TEMP_INTERVAL ) {
+				if( iTemp<=cfg.iTargetTemp-TEMP_INTERVAL ) {
 					TURN_HEAT;
 					iDir= UP;
 				} else if( iTemp>=cfg.iTargetTemp+2*TEMP_INTERVAL ) {
@@ -389,11 +402,11 @@ void loop() // is executed in a loop
 				if( iTemp>=cfg.iTargetTemp+TEMP_INTERVAL ) {
 					TURN_COOL;
 					iDir= DOWN;
-				} else if( iTemp<cfg.iTargetTemp-2*TEMP_INTERVAL ) {
+				} else if( iTemp<=cfg.iTargetTemp-2*TEMP_INTERVAL ) {
 					// too much overshoot, switch direction
 					TURN_HEAT;
 					iDir= UP;
-				} else if( iTemp<cfg.iTargetTemp-TEMP_INTERVAL ) {
+				} else if( iTemp<=cfg.iTargetTemp-TEMP_INTERVAL ) {
 					TURN_OFF;
 				} else
 					;
