@@ -19,8 +19,8 @@
 
 // display layout design (for now, simple mode only)
 // 0123456789012345		0123456789012345
-// 12:34:56 -12.34C		12:34:56  55.67C
-// ** TARGET-15.00C		*        HEAT ON
+// 12:34:56  -12.34		12:34:56   55.67
+// +-* TARGET-15.00		+ *      HEAT ON
 
 // TODO:
 // - write UI for real incubator programs (for example heat 3 days at 30C, then switch to cooling at 4C indefinite)
@@ -42,15 +42,17 @@
 OneWire ourWire( ONE_WIRE_PIN );		// init oneWire instance
 DallasTemperature sensors(&ourWire);	// init Dallas Temperature Library
 
-#define OUT1	2						// switch on the heat function
-#define OUT2	3						// switch on the cool function
+#define OUT1		2					// switch on the heat function on digital output 2
+#define OUT2		3					// switch on the cool function on digital output 3
+#define FAN_CONTROL	13					// switch on the fans on digital output 13
 
 #define MODE_OFF	0
-#define MODE_HEAT	1
-#define MODE_COOL	2
-#define MODE_TEMP_H	3
-#define MODE_TEMP_C	4
-#define MODE_TEMP_T	5
+#define MODE_FAN	1
+#define MODE_HEAT	2
+#define MODE_COOL	3
+#define MODE_TEMP_H	4
+#define MODE_TEMP_C	5
+#define MODE_TEMP_T	6
 
 #define MODE_MIN	MODE_OFF
 #define MODE_MAX	MODE_TEMP_T
@@ -59,11 +61,12 @@ DallasTemperature sensors(&ourWire);	// init Dallas Temperature Library
 #define TEMP_INTERVAL	50			// +-0.5C hysteresis
 #define TEMP_STEP		100			// button up and down changes target how much?
 #define TIME_INTERVAL	5			// minimum on or off time (important for PC power supplies)
+#define FAN_TIME		30			// how long to keep fans on after elements are turned off
 
 // config magic and version to be sure is for our code, otherwise fall back to defaults
 #define MAGIC1	0x0F	//oodhacking
 #define MAGIC2	0x0B	//ase
-#define VERSION	0x01	//v0.1
+#define VERSION	0x02	//v0.2
 
 typedef struct {
 	uint8_t uMagic1;
@@ -173,36 +176,55 @@ void print_temp( int t )
 	print2digits( t%100, '0' );
 }
 
-time_t tSample= 0;
-time_t tLast= 0;
-time_t tNow= 0;
+time_t tSample;
+time_t tLast;
+time_t tNow;
+time_t tFan;
 
 int8_t iLastKey= btnNONE;
 
 boolean active_low= TRUE;
 
+#define FAN_OFF		fan_onoff( LOW )
+#define FAN_ON		fan_onoff( HIGH )
+
+#define TURN_OFF	turn_onoff( LOW, LOW )
+#define TURN_HEAT	turn_onoff( HIGH, LOW )
+#define TURN_COOL	turn_onoff( LOW, HIGH )
+
+boolean fan_on= FALSE;
+void fan_onoff( uint8_t p )
+{
+	digitalWrite( FAN_CONTROL, p );
+	tFan= tNow;
+	fan_on= (p==HIGH);
+	lcd.setCursor( 2, 1 );
+	lcd.print( fan_on?'*':' ' );
+}
+
+boolean need_fan= FALSE;
 void turn_onoff( uint8_t p1, uint8_t p2 )
 {
-	if( active_low )
-	{
+	if( (p1==HIGH) || (p2==HIGH) ) {
+		FAN_ON;
+		need_fan= TRUE;
+		delay(1000);			// let's be nice to our PSU and not switch everything on at once
+	} else
+		need_fan= FALSE;
+
+	if( active_low ) {
 		digitalWrite( OUT1, p1==HIGH?LOW:HIGH );
 		digitalWrite( OUT2, p2==HIGH?LOW:HIGH );
-	}
-	else
-	{
+	} else {
 		digitalWrite( OUT1, p1 );
 		digitalWrite( OUT2, p2 );
 	}
 
 	lcd.setCursor( 0, 1 );
-	lcd.print( p1==HIGH?'*':' ' );
-	lcd.print( p2==HIGH?'*':' ' );
+	lcd.print( p1==HIGH?'+':' ' );
+	lcd.print( p2==HIGH?'-':' ' );
 	tSample= tNow;
 }
-
-#define TURN_OFF	turn_onoff( LOW, LOW )
-#define TURN_HEAT	turn_onoff( HIGH, LOW )
-#define TURN_COOL	turn_onoff( LOW, HIGH )
 
 int8_t iDir= 0;			// if we can cool and heat, we need to know what we were doing
 #define UP		1
@@ -214,6 +236,11 @@ void set_mode()
 	{
 	case MODE_OFF:
 		TURN_OFF;
+		FAN_OFF;
+		break;
+	case MODE_FAN:
+		TURN_OFF;
+		FAN_ON;
 		break;
 	case MODE_HEAT:
 		TURN_HEAT;
@@ -232,17 +259,20 @@ void set_mode()
 
 void print_mode( int8_t i )
 {
-	lcd.setCursor( 2, 1 );
+	lcd.setCursor( 3, 1 );
 	switch( i )
 	{
 	case MODE_OFF:
-		lcd.print( "           OFF" );
+		lcd.print( "          OFF" );
+		break;
+	case MODE_FAN:
+		lcd.print( "       FAN ON" );
 		break;
 	case MODE_HEAT:
-		lcd.print( "       HEAT ON" );
+		lcd.print( "      HEAT ON" );
 		break;
 	case MODE_COOL:
-		lcd.print( "       COOL ON" );
+		lcd.print( "      COOL ON" );
 		break;
 	case MODE_TEMP_H:
 		lcd.print( "HEAT TO" );
@@ -254,7 +284,6 @@ void print_mode( int8_t i )
 		lcd.print( " TARGET" );
 	more_temp:
 		print_temp( cfg.iTargetTemp );
-		lcd.print( 'C' );
 		break;
 	default:
 		;
@@ -265,6 +294,13 @@ void setup() // is executed once at the start
 {
 	tmElements_t tm;
 
+	pinMode( OUT1, OUTPUT );				// heat
+	pinMode( OUT2, OUTPUT );				// cool
+	pinMode( FAN_CONTROL, OUTPUT );			// fan
+
+	FAN_OFF;
+	TURN_OFF;
+
 	lcd.begin( 16, 2 );						// start the LCD library
 	lcd.setBacklightPin ( 10, POSITIVE );
 	lcd.setBacklight( 128 );				// set the contrast to 50%
@@ -274,14 +310,15 @@ void setup() // is executed once at the start
 
 	sensors.begin();						// init Dallas Temperature library
 
-	if( RTC.chipPresent() && !RTC.read( tm ) )
-		RTC.set( 0 );						// we have a chip but it needs kicking in the butt
+	if( RTC.chipPresent() ) {
+		if( !RTC.read( tm ) ) {
+			RTC.set( 0 );						// we have a chip but it needs kicking in the butt
+			RTC.read( tm );
+		}
+		tFan= tLast= tSample= tNow= makeTime( tm );
+	} else
+		tFan= tLast= tSample= tNow= 0;
 
-	TURN_OFF;
-
-	pinMode( OUT1, OUTPUT );				// heat
-	pinMode( OUT2, OUTPUT );				// cool
-	
 	set_mode();
 	print_mode( cfg.iMode );
 }
@@ -301,13 +338,19 @@ void loop() // is executed in a loop
 	iTemp= (int) (fTemp*100);					// convert float to int
 	if( iTemp!=iLastTemp ) {
 		iLastTemp= iTemp;
-		lcd.setCursor( 9, 0 );
+		lcd.setCursor( 10, 0 );
 		print_temp( iTemp );					// display temperature
-		lcd.print( 'C' );
 	}
 
 	if( RTC.read( tm ) ) {
 		tNow= makeTime( tm );
+
+		if( fan_on && !need_fan ) {				// check why that fan is still running
+			if( tNow-tFan>=FAN_TIME && cfg.iMode!=MODE_FAN ) {
+				FAN_OFF;
+			}
+		}
+
 		if( tNow!=tLast ) {						// only update time on display if time has changed
 			if( tm.Hour!=oldTm.Hour ) {
 				lcd.setCursor( 0, 0 );
@@ -362,7 +405,7 @@ void loop() // is executed in a loop
 			break;
 		case btnSELECT:
 			RTC.set(0);						// reset time
-			tNow= tLast= tSample= 0;
+			tNow= tLast= tSample= tFan= 0;
 			break;
 		case btnNONE:
 			print_mode( MODE_MAX+1 );
