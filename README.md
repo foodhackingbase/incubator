@@ -4,7 +4,7 @@ Experimental Incubator
 Wiki: http://wiki.techinc.nl/index.php/Fermentation_controller
 Food Hacking Base project page: http://foodhackingbase.org/wiki/Experimental_Incubator
 Code: https://github.com/foodhackingbase/incubator
-Programmers: larsm <post@larsm.org>, Marcel <bigmac@xs4all.nl> 
+Programmers: larsm <post@larsm.org>, Marcel <bigmac@xs4all.nl>
 
 Code was used from: http://www.dfrobot.com/wiki/index.php?title=Arduino_LCD_KeyPad_Shield_%28SKU:_DFR0009%29
 
