@@ -22,11 +22,11 @@ Experimental Incubator
 - http://wiki.techinc.nl/index.php/Fermentation_controller#An_overview_of_pins_used
 
 ## display layout design (for now, simple mode only)
----
+```
 0123456789012345		0123456789012345
 12:34:56  -12.34		12:34:56   55.67
 +-* TARGET-15.00		+ *      HEAT ON
----
+```
 
 ## TODO:
 - write UI for real incubator programs (for example heat 3 days at 30C, then switch to cooling at 4C indefinite)
