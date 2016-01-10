@@ -1,1 +1,0 @@
-Put these folders into your arduino sketchbook/libraries folder.
