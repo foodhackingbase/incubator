@@ -29,7 +29,7 @@
 // - take out float code from temp lib
 
 // libraries
-#include <LiquidCrystal.h>				// must be the new one for backlight control!!!
+#include <LiquidCrystal_I2C.h>				// must be the new one for backlight control!!!
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <DS1307RTC.h>
@@ -103,14 +103,18 @@ void save_config()
 }
 
 // LCD panel
-LiquidCrystal lcd( 8, 9, 4, 5, 6, 7 );	// the pins where the display is connected
+// for PCF8574A based I2C displays
+// LiquidCrystal_I2C lcd(0x3F, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
+// for PCF8574T based I2C displays
+LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3 , POSITIVE);
 // define some values used by the LCD panel and Keys
-#define btnRIGHT  0
-#define btnUP     1
-#define btnDOWN   2
-#define btnLEFT   3
-#define btnSELECT 4
-#define btnNONE   5
+#define btnLLEFT  1
+#define btnLEFT   2
+#define btnUP     3
+#define btnDOWN   4
+#define btnRIGHT  5
+#define btnRRIGHT 6
+#define btnNONE   0
 
 // read the keys
 int8_t read_LCD_keys()
@@ -129,15 +133,17 @@ int8_t read_LCD_keys()
 
 	// For V1.0 comment the other threshold and use the one below:
 	if( adc_key_in<50 )
-		return btnRIGHT;
+		return btnLLEFT;
 	if( adc_key_in<195 )
-		return btnUP;
-	if( adc_key_in<380 )
-		return btnDOWN;
-	if( adc_key_in<555 )
 		return btnLEFT;
+	if( adc_key_in<380 )
+		return btnUP;
+	if( adc_key_in<555 )
+		return btnRIGHT;
 	if( adc_key_in<790 )
-		return btnSELECT;
+		return btnDOWN;
+	if( adc_key_in<950 )
+		return btnRRIGHT;
 
 	return btnNONE;							// when all others fail, return this...
 }
@@ -302,7 +308,7 @@ void setup() // is executed once at the start
 	TURN_OFF;
 
 	lcd.begin( 16, 2 );						// start the LCD library
-	lcd.setBacklightPin ( 10, POSITIVE );
+	//lcd.setBacklightPin ( 10, POSITIVE );
 	lcd.setBacklight( 128 );				// set the contrast to 50%
 	splash();
 
@@ -403,7 +409,7 @@ void loop() // is executed in a loop
 			cfg.iTargetTemp-= TEMP_STEP;
 			print_mode( cfg.iMode );
 			break;
-		case btnSELECT:
+		case btnLLEFT:
 			RTC.set(0);						// reset time
 			tNow= tLast= tSample= tFan= 0;
 			break;
