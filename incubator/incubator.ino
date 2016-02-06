@@ -44,7 +44,7 @@ DallasTemperature sensors(&ourWire);	// init Dallas Temperature Library
 
 #define OUT1		2					// switch on the heat function on digital output 2
 #define OUT2		3					// switch on the cool function on digital output 3
-#define FAN_CONTROL	13					// switch on the fans on digital output 13
+#define FAN_CONTROL	5					// switch on the fans on digital output 13
 
 #define MODE_OFF	0
 #define MODE_FAN	1
@@ -201,7 +201,11 @@ boolean active_low= TRUE;
 boolean fan_on= FALSE;
 void fan_onoff( uint8_t p )
 {
-	digitalWrite( FAN_CONTROL, p );
+	if( active_low ) {
+		digitalWrite( FAN_CONTROL, p==HIGH?LOW:HIGH );
+	} else {
+		digitalWrite( FAN_CONTROL, p );
+	}
 	tFan= tNow;
 	fan_on= (p==HIGH);
 	lcd.setCursor( 2, 1 );
